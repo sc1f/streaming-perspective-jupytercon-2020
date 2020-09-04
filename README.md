@@ -1,3 +1,3 @@
-# JupyterCon 2020
+# Streaming, cross-sectional data visualization in Jupyterlab with Perspective and Apache Arrow
 
-TODO
+Notebooks for my upcoming [JupyterCon2020](http://jupytercon.com/) tutorial.
