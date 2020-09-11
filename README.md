@@ -1,6 +1,6 @@
 # Streaming, cross-sectional data visualization in Jupyterlab with Perspective and Apache Arrow
 
-Notebooks, slides, and a fully interactive `perspective-python` and `perspective-workspace` example for my upcoming [JupyterCon2020](http://jupytercon.com/) tutorial.
+Notebooks, slides, and a fully interactive `perspective-python` and `perspective-workspace` example for my upcoming [JupyterCon2020](http://jupytercon.com/) _Jupyter community: tools and practices_ talk.
 
 ### Abstract
 
