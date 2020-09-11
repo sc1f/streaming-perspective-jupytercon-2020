@@ -17,52 +17,39 @@ from tornado_datasources import (
 
 from schemas import holdings_schema, last_quote_schema, charts_schema
 
-client = pyEX.Client(version="sandbox")
-
-symbols = ["AAPL", "MSFT", "AMZN", "TSLA", "SPY", "SNAP", "ZM", "JPM"]
+# Construct our portfolio
+symbols = ["AAPL", "MSFT", "AMZN", "TSLA", "SPY", "SNAP", "ZM"]
 holdings = {symbol: random.randint(5, 10) for symbol in symbols}
 
-# Create the table from schema
-holdings_table = perspective.Table(holdings_schema, index="symbol")
-holdings_view = holdings_table.view()
+# Initialize the pyEX client - the API key is stored under `IEX_TOKEN` as
+# an environment variable.
+client = pyEX.Client(version="sandbox")
 
-# Update it with the symbols and quantities of each stock
-holdings_table.update(
-    {"symbol": symbols, "quantity": [holdings[symbol] for symbol in symbols]}
-)
+# Create all the tables and views in one place
+TABLES = {
+    "holdings": perspective.Table(holdings_schema, index="symbol"),
+    "holdings_total": perspective.Table(holdings_schema),
+    "quotes": perspective.Table(last_quote_schema),
+    "charts": perspective.Table(charts_schema),
+}
 
-# Create the unindexed total table
-holdings_total_table = perspective.Table(holdings_schema)
-holdings_total_view = holdings_total_table.view()
-
-
-def update_total(port, delta):
-    """When the indexed table updates with the latest price, update the
-    unindexed table with the rows that changed."""
-    holdings_total_table.update(delta)
+VIEWS = {name: TABLES[name].view() for name in TABLES.keys()}
 
 
-holdings_view.on_update(update_total, mode="row")
+class MainHandler(tornado.web.RequestHandler):
+    def set_default_headers(self):
+        self.set_header("Access-Control-Allow-Origin", "*")
+        self.set_header("Access-Control-Allow-Headers", "x-requested-with")
+        self.set_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
 
-quotes_table = perspective.Table(last_quote_schema)
-quotes_view = quotes_table.view()
+    def get(self):
+        self.render("index.html")
 
 
-def update_holdings(port, delta):
-    holdings_table.update(delta)
-
-
-quotes_view.on_update(update_holdings, mode="row")
-
-# Clean the quotes to have the right format for sandbox data, which comes with randomly generated `time`s
 def clean_quote(tick):
     for t in tick:
         t["time"] = datetime.now()
     return tick
-
-# charts_schema conforms to the output of Historical Prices, with `quantity` added so we can easily join it with `holdings_table`.
-charts_table = perspective.Table(charts_schema)
-charts_view = charts_table.view()
 
 
 def clean_charts(tick):
@@ -76,31 +63,43 @@ def clean_charts(tick):
     return out
 
 
-
-class MainHandler(tornado.web.RequestHandler):
-    def set_default_headers(self):
-        self.set_header("Access-Control-Allow-Origin", "*")
-        self.set_header("Access-Control-Allow-Headers", "x-requested-with")
-        self.set_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
-
-    def get(self):
-        self.render("index.html")
-
-
 def make_app():
+    """Create a `PerspectiveManager` and host our tables and views so they
+    can be accessed over a Websocket."""
     MANAGER = perspective.PerspectiveManager()
 
-    MANAGER.host_table("holdings_table", holdings_table)
-    MANAGER.host_view("holdings_view", holdings_view)
+    # Seed the initial holdings table
+    TABLES["holdings"].update(
+        {
+            "symbol": symbols,
+            "quantity": [holdings[symbol] for symbol in symbols],
+        }
+    )
 
-    MANAGER.host_table("holdings_total_table", holdings_total_table)
-    MANAGER.host_view("holdings_total_view", holdings_total_view)
+    # Set up the on_update callbacks
+    def update_total(port, delta):
+        """When the indexed table updates with the latest price, update the
+        unindexed table with the rows that changed."""
+        TABLES["holdings_total"].update(delta)
 
-    MANAGER.host_table("quotes_table", quotes_table)
-    MANAGER.host_view("quotes_view", quotes_view)
+    VIEWS["holdings"].on_update(update_total, mode="row")
 
-    MANAGER.host_table("charts_table", charts_table)
-    MANAGER.host_view("charts_view", charts_view)
+    def update_holdings(port, delta):
+        TABLES["holdings"].update(delta)
+
+    VIEWS["quotes"].on_update(update_holdings, mode="row")
+
+    MANAGER.host_table("holdings_table", TABLES["holdings"])
+    MANAGER.host_view("holdings_view", VIEWS["holdings"])
+
+    MANAGER.host_table("holdings_total_table", TABLES["holdings_total"])
+    MANAGER.host_view("holdings_total_view", VIEWS["holdings_total"])
+
+    MANAGER.host_table("quotes_table", TABLES["quotes"])
+    MANAGER.host_view("quotes_view", VIEWS["quotes"])
+
+    MANAGER.host_table("charts_table", TABLES["charts"])
+    MANAGER.host_view("charts_view", VIEWS["charts"])
 
     return tornado.web.Application(
         [
@@ -121,8 +120,9 @@ if __name__ == "__main__":
     logging.critical("Listening on http://localhost:8888")
     loop = tornado.ioloop.IOLoop.current()
 
+    # Initialize our datasources
     quotes = IEXIntervalDataSource(
-        table=quotes_table,
+        table=TABLES["quotes"],
         ioloop=loop,
         iex_source=client.last,
         data_cleaner=clean_quote,
@@ -130,7 +130,7 @@ if __name__ == "__main__":
     )
 
     charts = IEXStaticDataSource(
-        charts_table,
+        table=TABLES["charts"],
         iex_source=client.batch,
         ioloop=loop,
         data_cleaner=clean_charts,
