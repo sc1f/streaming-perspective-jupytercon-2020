@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+
+    <script src="https://unpkg.com/@finos/perspective-workspace/dist/umd/perspective-workspace.js"></script>
+    <script src="https://unpkg.com/@finos/perspective-viewer-datagrid/dist/umd/perspective-viewer-datagrid.js"></script>
+    <script src="https://unpkg.com/@finos/perspective-viewer-d3fc/dist/umd/perspective-viewer-d3fc.js"></script>
+    <script src="https://unpkg.com/@finos/perspective/dist/umd/perspective.js"></script>
+
+    <link rel='stylesheet' href="https://unpkg.com/@finos/perspective-workspace/dist/umd/material.css"
+        is="custom-style">
+
+    <style>
+        perspective-viewer {
+            flex: 1;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            margin: 0;
+            padding: 0;
+        }
+
+        input {
+            margin: 24px;
+            max-width: 300px;
+        }
+
+        @media (max-width: 600px) {
+            html {
+                overflow: hidden;
+            }
+
+            body {
+                position: fixed;
+                height: 100%;
+                width: 100%;
+                margin: 0;
+                overflow: hidden;
+                touch-action: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <perspective-workspace></perspective-workspace>
+
+    <script>
+        const worker = perspective.worker();
+        const URL = "ws://localhost:8888/websocket";
+        const websocket = perspective.websocket(URL);
+
+        const datasource = async (view_name, options = {}) => {
+            const server_view = websocket.open_view(view_name);
+            return worker.table(server_view, options);
+        };
+
+        window.addEventListener("WebComponentsReady", async function () {
+            const workspace = document.getElementsByTagName("perspective-workspace")[0];
+
+            workspace.addTable("holdings", datasource("holdings_view", {
+                index: "symbol"
+            }));
+            workspace.addTable("holdings_total", datasource("holdings_total_view"));
+            workspace.addTable("quotes", datasource("quotes_view"));
+            workspace.addTable("charts", datasource("charts_view"));
+
+            const config = {
+                "sizes": [
+                    1
+                ],
+                "detail": {
+                    "main": {
+                        "type": "split-area",
+                        "orientation": "vertical",
+                        "children": [{
+                                "type": "split-area",
+                                "orientation": "horizontal",
+                                "children": [{
+                                        "type": "tab-area",
+                                        "widgets": [
+                                            "PERSPECTIVE_GENERATED_ID_1"
+                                        ],
+                                        "currentIndex": 0
+                                    },
+                                    {
+                                        "type": "tab-area",
+                                        "widgets": [
+                                            "PERSPECTIVE_GENERATED_ID_4"
+                                        ],
+                                        "currentIndex": 0
+                                    }
+                                ],
+                                "sizes": [
+                                    0.4520905923344948,
+                                    0.5479094076655052
+                                ]
+                            },
+                            {
+                                "type": "split-area",
+                                "orientation": "horizontal",
+                                "children": [{
+                                        "type": "tab-area",
+                                        "widgets": [
+                                            "PERSPECTIVE_GENERATED_ID_0"
+                                        ],
+                                        "currentIndex": 0
+                                    },
+                                    {
+                                        "type": "tab-area",
+                                        "widgets": [
+                                            "PERSPECTIVE_GENERATED_ID_3"
+                                        ],
+                                        "currentIndex": 0
+                                    },
+                                    {
+                                        "type": "tab-area",
+                                        "widgets": [
+                                            "PERSPECTIVE_GENERATED_ID_5"
+                                        ],
+                                        "currentIndex": 0
+                                    }
+                                ],
+                                "sizes": [
+                                    0.2631578947368421,
+                                    0.3558483002072692,
+                                    0.3809938050558887
+                                ]
+                            }
+                        ],
+                        "sizes": [
+                            0.5031217481789803,
+                            0.49687825182101975
+                        ]
+                    }
+                },
+                "mode": "globalFilters",
+                "viewers": {
+                    "PERSPECTIVE_GENERATED_ID_1": {
+                        "plugin": "d3_y_line",
+                        "row-pivots": [
+                            "time"
+                        ],
+                        "column-pivots": [
+                            "symbol"
+                        ],
+                        "columns": [
+                            "price"
+                        ],
+                        "selectable": null,
+                        "editable": null,
+                        "computed-columns": null,
+                        "aggregates": null,
+                        "filters": null,
+                        "sort": null,
+                        "plugin_config": {
+                            "realValues": [
+                                "price"
+                            ]
+                        },
+                        "master": false,
+                        "name": "Live Prices by Symbol",
+                        "table": "holdings_total",
+                        "linked": false
+                    },
+                    "PERSPECTIVE_GENERATED_ID_4": {
+                        "plugin": "d3_y_line",
+                        "computed-columns": [
+                            "\"quantity\" * \"close\" as \"value\""
+                        ],
+                        "row-pivots": [
+                            "date"
+                        ],
+                        "column-pivots": [
+                            "symbol"
+                        ],
+                        "columns": [
+                            "value"
+                        ],
+                        "selectable": null,
+                        "editable": null,
+                        "aggregates": null,
+                        "filters": null,
+                        "sort": null,
+                        "plugin_config": {
+                            "realValues": [
+                                "value"
+                            ]
+                        },
+                        "master": false,
+                        "name": "Portfolio Value by Symbol, last 5 years",
+                        "table": "charts",
+                        "linked": false
+                    },
+                    "PERSPECTIVE_GENERATED_ID_0": {
+                        "plugin": "datagrid",
+                        "computed-columns": [
+                            "\"quantity\" * \"price\" as \"value\""
+                        ],
+                        "row-pivots": [
+                            "symbol"
+                        ],
+                        "aggregates": {
+                            "value": "sum abs"
+                        },
+                        "sort": [
+                            [
+                                "value",
+                                "desc"
+                            ]
+                        ],
+                        "columns": [
+                            "value",
+                            "price",
+                            "quantity"
+                        ],
+                        "selectable": null,
+                        "editable": null,
+                        "column-pivots": null,
+                        "filters": null,
+                        "master": false,
+                        "name": "Current Holdings",
+                        "table": "holdings",
+                        "linked": false
+                    },
+                    "PERSPECTIVE_GENERATED_ID_3": {
+                        "plugin": "d3_ohlc",
+                        "row-pivots": [
+                            "date"
+                        ],
+                        "filters": [
+                            [
+                                "symbol",
+                                "==",
+                                "SPY"
+                            ]
+                        ],
+                        "columns": [
+                            "open",
+                            "close",
+                            "high",
+                            "low"
+                        ],
+                        "selectable": null,
+                        "editable": null,
+                        "computed-columns": null,
+                        "column-pivots": null,
+                        "aggregates": null,
+                        "sort": null,
+                        "plugin_config": {
+                            "realValues": [
+                                "open",
+                                "close",
+                                "high",
+                                "low"
+                            ]
+                        },
+                        "master": false,
+                        "name": "SPY OHLC, last 5 years",
+                        "table": "charts",
+                        "linked": false
+                    },
+                    "PERSPECTIVE_GENERATED_ID_5": {
+                        "plugin": "d3_ohlc",
+                        "row-pivots": [
+                            "date"
+                        ],
+                        "columns": [
+                            "open",
+                            "close",
+                            "high",
+                            "low"
+                        ],
+                        "filters": [
+                            [
+                                "symbol",
+                                "==",
+                                "TSLA"
+                            ]
+                        ],
+                        "selectable": null,
+                        "editable": null,
+                        "computed-columns": null,
+                        "column-pivots": null,
+                        "aggregates": null,
+                        "sort": null,
+                        "plugin_config": {
+                            "realValues": [
+                                "open",
+                                "close",
+                                "high",
+                                "low"
+                            ]
+                        },
+                        "master": false,
+                        "name": "TSLA OHLC, last 5 years",
+                        "table": "charts",
+                        "linked": false
+                    }
+                }
+            }
+            workspace.restore(config);
+        });
+    </script>
+
+</body>
+
+</html>

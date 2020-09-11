@@ -1,7 +1,0 @@
-{
-  "name": "streaming-perspective-jupytercon-2020-client",
-  "version": "1.0.0",
-  "description": "A `perspective-workspace` to demonstrate how to use client/server Perspective in transitioning from Jupyterlab.",
-  "main": "index.js",
-  "license": "Apache-2.0"
-}
