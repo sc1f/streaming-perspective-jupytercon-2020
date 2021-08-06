@@ -35,7 +35,6 @@ TABLES = {
 
 VIEWS = {name: TABLES[name].view() for name in TABLES.keys()}
 
-
 class MainHandler(tornado.web.RequestHandler):
     def set_default_headers(self):
         self.set_header("Access-Control-Allow-Origin", "*")
@@ -90,17 +89,10 @@ def make_app():
     VIEWS["quotes"].on_update(update_holdings, mode="row")
 
     MANAGER.host_table("holdings_table", TABLES["holdings"])
-    MANAGER.host_view("holdings_view", VIEWS["holdings"])
-
     MANAGER.host_table("holdings_total_table", TABLES["holdings_total"])
-    MANAGER.host_view("holdings_total_view", VIEWS["holdings_total"])
-
     MANAGER.host_table("quotes_table", TABLES["quotes"])
-    MANAGER.host_view("quotes_view", VIEWS["quotes"])
-
     MANAGER.host_table("charts_table", TABLES["charts"])
-    MANAGER.host_view("charts_view", VIEWS["charts"])
-
+    
     return tornado.web.Application(
         [
             # create a websocket endpoint that the client Javascript can access
